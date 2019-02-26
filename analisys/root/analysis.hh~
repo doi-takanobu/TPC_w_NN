@@ -1,0 +1,19 @@
+#ifndef _ANALYSIS_HH_
+#define _ANALYSIS_HH_
+
+#include <TROOT.h>
+#include <TTree.h>
+#include <TSpline.h>
+#include <iostream>
+
+const double ch_to_cm = 0.1;//convert factor prediction to cm
+const double rho_He = 0.0001785;//density of He g/cm3
+const double rho_C4H10 = 0.002673;// density of C4H10 (iso-btan) g/cm3
+Double_t getE(Double_t xv1,Double_t xv3,Double_t xs1,Double_t xs3,TSpline3* spline);
+Double_t getE(Double_t dx,TSpline3* spline);
+Double_t getthr(Double_t xv1,Double_t xv3,Double_t xs1,Double_t xs3);
+Double_t getEx(Double_t E,Double_t thr,Double_t m1,Double_t m2,Double_t m3,Double_t m4);
+TTree* calc_Ex(TTree *tin,const char *treenam);
+TSpline3* getSpline(char* file);
+
+#endif

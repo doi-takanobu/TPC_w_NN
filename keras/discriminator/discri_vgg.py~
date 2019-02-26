@@ -1,0 +1,116 @@
+import keras
+from keras.models import Model
+from keras.layers import Input
+from keras.layers import Conv2D,MaxPooling2D,concatenate
+from keras.layers import Dense,Dropout,Flatten
+from keras.optimizers import SGD
+from keras.utils import plot_model
+from keras.callbacks import CSVLogger,TensorBoard
+from keras.backend import tensorflow_backend as KTF
+import tensorflow as tf
+import numpy as np
+import time
+
+##========== data loading ==========#
+anode = np.load("../../data/anode_uint8.npy")
+cathode = np.load("../../data/cathode_uint8.npy")
+anode = anode.reshape((-1,256,1024,1))
+cathode = cathode.reshape((-1,256,1024,1))
+ans = np.load("../../data/ans.npy")
+
+batch_size = 64
+epochs = 200
+sample_size = 3000
+
+anode = anode[:sample_size]
+cathode = cathode[:sample_size]
+ans = ans[:sample_size]
+
+##========== tensorboard setup ==========##
+old_session = KTF.get_session()
+session = tf.Session("")
+KTF.set_session(session)
+KTF.set_learning_phase(1)
+
+##========== building model ==========##
+anode_input = Input(shape=(256,1024,1))
+cathode_input = Input(shape=(256,1024,1))
+x0 = MaxPooling2D(pool_size=(4,4))(anode_input)
+y0 = MaxPooling2D(pool_size=(4,4))(cathode_input)
+x1 = Conv2D(filters=64,kernel_size=(3,3),
+            padding="same",activation="relu")(x0)
+y1 = Conv2D(filters=64,kernel_size=(3,3),
+            padding="same",activation="relu")(y0)
+x2 = Conv2D(filters=64,kernel_size=(3,3),
+            padding="same",activation="relu")(x1)
+y2 = Conv2D(filters=64,kernel_size=(3,3),
+            padding="same",activation="relu")(y1)
+x3 = MaxPooling2D(pool_size=(2,2))(x2)
+y3 = MaxPooling2D(pool_size=(2,2))(y2)
+x4 = Conv2D(filters=128,kernel_size=(3,3),
+            padding="same",activation="relu")(x3)
+y4 = Conv2D(filters=128,kernel_size=(3,3),
+            padding="same",activation="relu")(y3)
+x5 = Conv2D(filters=128,kernel_size=(3,3),
+            padding="same",activation="relu")(x4)
+y5 = Conv2D(filters=128,kernel_size=(3,3),
+            padding="same",activation="relu")(y4)
+x6 = MaxPooling2D(pool_size=(2,2))(x5)
+y6 = MaxPooling2D(pool_size=(2,2))(y5)
+x7 = Conv2D(filters=256,kernel_size=(3,3),
+            padding="same",activation="relu")(x6)
+y7 = Conv2D(filters=256,kernel_size=(3,3),
+            padding="same",activation="relu")(y6)
+x8 = Conv2D(filters=256,kernel_size=(3,3),
+            padding="same",activation="relu")(x7)
+y8 = Conv2D(filters=256,kernel_size=(3,3),
+            padding="same",activation="relu")(y7)
+x9 = Conv2D(filters=256,kernel_size=(3,3),
+            padding="same",activation="relu")(x8)
+y9 = Conv2D(filters=256,kernel_size=(3,3),
+            padding="same",activation="relu")(y8)
+x10 = MaxPooling2D(pool_size=(2,2))(x9)
+y10 = MaxPooling2D(pool_size=(2,2))(y9)
+z0 = concatenate([x10,y10])
+z1 = Conv2D(filters=512,kernel_size=(3,3),
+            padding="same",activation="relu")(z0)
+z2 = Conv2D(filters=512,kernel_size=(3,3),
+            padding="same",activation="relu")(z1)
+z3 = Conv2D(filters=512,kernel_size=(1,1),
+            padding="same",activation="relu")(z2)
+z4 = MaxPooling2D(pool_size=(2,2))(z3)
+z5 = Conv2D(filters=512,kernel_size=(3,3),
+            padding="same",activation="relu")(z4)
+z6 = Conv2D(filters=512,kernel_size=(3,3),
+            padding="same",activation="relu")(z5)
+z7 = Conv2D(filters=512,kernel_size=(1,1),
+            padding="same",activation="relu")(z6)
+z8 = MaxPooling2D(pool_size=(2,2))(z7)
+z9 = Flatten()(z8)
+z9 = Dense(4096,activation="sigmoid")(z9)
+z10 = Dropout(0.5)(z9)
+z11 = Dense(4096,activation="sigmoid")(z10)
+z12 = Dropout(0.5)(z11)
+z13 = Dense(2,activation="sigmoid")(z12)
+z14 = Dropout(0.5)(z13)
+output = Dense(2,activation="softmax")(z14)
+
+model = Model(inputs=[anode_input,cathode_input],outputs=output)
+
+sgd = SGD(lr=0.01,decay=1e-6,momentum=0.9,nesterov=True)
+model.compile(loss="categorical_crossentropy",
+              optimizer=sgd,
+              metrics=["accuracy"])
+plot_model(model,"discri_vgg.png")
+
+##========== fitting ==========##
+csvlogger = CSVLogger("discri_vgg.csv")
+board = TensorBoard(log_dir="log",histogram_freq=1)
+model.fit([anode,cathode],
+          ans,
+          epochs=1000,
+          batch_size=128,
+          validation_split=0.1,
+          callbacks=[csvlogger,board])
+
+KTF.set_session(old_session)

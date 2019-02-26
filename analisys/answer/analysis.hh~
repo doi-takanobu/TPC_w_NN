@@ -1,0 +1,16 @@
+#ifndef _ANALYSIS_HH_
+#define _ANALYSIS_HH_
+
+#include <TROOT.h>
+#include <TTree.h>
+#include <iostream>
+
+const double ch_to_cm = 0.1;//convert factor prediction to cm
+const double rho = 0.1785;//density g/cm3
+Double_t getE(Double_t xv1,Double_t xv3,Double_t xs1,Double_t xs3);
+Double_t getE(Double_t dx);
+Double_t getthr(Double_t xv1,Double_t xv3,Double_t xs1,Double_t xs3);
+Double_t getEx(Double_t E,Double_t thr,Double_t m1,Double_t m2,Double_t m3,Double_t m4);
+TTree* calc_Ex(TTree *tin,const char *treenam);
+
+#endif

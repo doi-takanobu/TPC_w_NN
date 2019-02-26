@@ -1,0 +1,75 @@
+import keras
+from keras.models import Model
+from keras.layers import Dense,Dropout,Input
+from keras.layers import Conv2D,MaxPooling2D,Flatten
+from keras.optimizers import SGD
+from keras.callbacks import CSVLogger,TensorBoard
+from keras.utils import plot_model
+import numpy as np
+import time
+
+##========== data loading ==========##
+anode = np.load("../../data/anode_uint8.npy")
+cathode = np.load("../../data/cathode_uint8.npy")
+anode = anode.reshape((-1,256,1024,1))
+cathode = cathode.reshape((-1,256,1024,1))
+ans = np.load("../../data/ans.npy")
+
+batch_size = 64
+epochs = 200
+sample_size = 3000
+
+anode = anode[:sample_size]
+cathode = cathode[:sample_size]
+ans = ans[:sample_size]
+
+##========== model building ==========##
+anode_input = Input(shape=(256,1024,1))
+cathode_input = Input(shape=(256,1024,1))
+x = Conv2D(filters=16,kernel_size=(3,3),
+           padding="same",activation="relu")(anode_input)
+y = Conv2D(filters=16,kernel_size=(3,3),
+           padding="same",activation="relu")(cathode_input)
+x = MaxPooling2D(pool_size=(4,4))(x)
+y = MaxPooling2D(pool_size=(4,4))(y)
+x = Conv2D(filters=64,kernel_size=(3,3),
+           padding="same",activation="relu")(x)
+y = Conv2D(filters=64,kernel_size=(3,3),
+           padding="same",activation="relu")(y)
+x = MaxPooling2D(pool_size=(4,4))(x)
+y = MaxPooling2D(pool_size=(4,4))(y)
+z = keras.layers.concatenate([x,y])
+z = Conv2D(filters=256,kernel_size=(3,3),
+           padding="same",activation="relu")(z)
+z = MaxPooling2D(pool_size=(4,4))(z)
+z = Flatten()(z)
+z = Dense(128,activation="sigmoid")(z)
+z = Dropout(0.3)(z)
+output = Dense(2,activation="softmax")(z)
+
+model = Model(inputs=[anode_input,cathode_input],outputs=output)
+
+sgd = SGD(lr=0.01,decay=1e-6,momentum=0.9,nesterov=True)
+model.compile(loss="categorical_crossentropy",
+              optimizer="adam",
+              metrics=["accuracy"])
+#plot_model(model,"discri_2.png")
+
+##========== fitting ==========##
+csvlogger = CSVLogger("discri_2.csv")
+#board = TensorBoard(log_dir="log")
+start = time.time()
+model.fit([anode,cathode],
+          ans,
+          epochs=epochs,
+          batch_size=batch_size,
+          validation_split=0.1,
+          callbacks=[csvlogger])
+end = time.time()
+print("Fitting time is {} second.".format(end-start))
+model.save("discri_2.h5")
+#score = model.evaluate([anode[int(0.9*len(anode)):],
+#                        cathode[int(0.9*len(cathode)):]],
+#                       ans[int(0.9*len(ans)):],
+#                       batch_size=batch_size)
+#print(score)

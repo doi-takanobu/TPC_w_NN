@@ -1,0 +1,98 @@
+import numpy as np
+import time
+import keras
+from keras.models import Model
+from keras.layers import Input,Conv2D,MaxPooling2D
+from keras.layers import Flatten,Dense,Dropout,concatenate
+from keras.callbacks import CSVLogger#,TensorBoard
+#from keras.utils import plot_model
+#import keras.backend.tensorflow_backend as KTF
+#import tensorflow as tf
+
+path = "../../data/"
+
+cell = np.empty((0,2,1024,256))
+result = np.empty((0,13))
+for i in [178,179,182,183,184]:
+    cell = np.append(cell,np.load(path+"track/run0"+str(i)+"_track.npy"),axis=0)
+    result = np.append(result,np.load(path+"result/run0"+str(i)+"_result.npy"),axis=0)
+    print(i,len(cell))
+point = result[:,5:13]
+#point_a = result[:,5:9]
+#point_c = result[:,9:13]
+cell_test = np.empty((0,2,1024,256))
+result_test = np.empty((0,13))
+for i in [190,191]:
+    cell_test = np.append(cell_test,np.load(path+"track/run0"+str(i)+"_track.npy"),axis=0)
+    result_test = np.append(result_test,np.load(path+"result/run0"+str(i)+"_result.npy"),axis=0)
+    print(i,len(cell_test))
+point_test = result_test[:,5:13]
+#point_a_test = result_test[:,5:9]
+#point_c_test = resutl_test[:,9:13]
+del result,result_test
+shape = cell[0][0:1].shape
+
+#old_session = KTF.get_session()
+#session = tf.Session('')
+#KTF.set_session(session)
+#KTF.set_learning_phase(1)
+
+Input_a = Input(shape=shape)
+Input_c = Input(shape=shape)
+x = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(Input_a)
+y = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(Input_c)
+x = Conv2D(filters=40,kernel_size=16,padding="same",
+           activation="relu",data_format="channels_first")(x)
+y = Conv2D(filters=40,kernel_size=16,padding="same",
+           activation="relu",data_format="channels_first")(y)
+x = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(x)
+y = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(y)
+x = Conv2D(filters=40,kernel_size=8,padding="same",
+           activation="relu",data_format="channels_first")(x)
+y = Conv2D(filters=40,kernel_size=8,padding="same",
+           activation="relu",data_format="channels_first")(y)
+x = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(x)
+y = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(y)
+x = Conv2D(filters=40,kernel_size=4,padding="same",
+           activation="relu",data_format="channels_first")(x)
+y = Conv2D(filters=40,kernel_size=4,padding="same",
+           activation="relu",data_format="channels_first")(y)
+x = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(x)
+y = MaxPooling2D(pool_size=(2,2),data_format="channels_first")(y)
+x = Flatten()(x)
+y = Flatten()(y)
+x = Dense(128,activation="sigmoid")(x)
+y = Dense(128,activation="sigmoid")(y)
+x = Dropout(0.3)(x)
+y = Dropout(0.3)(y)
+x = Dense(16,activation="sigmoid")(x)
+y = Dense(16,activation="sigmoid")(y)
+x = Dropout(0.3)(x)
+y = Dropout(0,3)(y)
+z = concatenate([x,y])
+Output = Dense(8,activation="relu")(z)
+
+model = Model(inputs=[Input_a,Input_c],outputs=Output)
+model.compile(loss="mse",optimizer="adadelta")
+csvlogger = CSVLogger("indirect_norm-7.csv")
+#board = TensorBoard(log_dir="./log/",histogram_freq=1)
+
+factor = [256.,1024.,256.,1024.,256.,1024.,256.,1024.]
+factor = np.array(factor)
+
+start = time.time()
+model.fit([cell[:,0:1],cell[:,1:2]],point/factor,epochs=500,batch_size=64,
+          validation_data=[[cell_test[:,0:1],cell_test[:,1:2]],point_test/factor],
+          callbacks=[csvlogger])
+end = time.time()
+print("Learning time is {} second".format(end-start))
+#model.summary()
+model.save("indirect_norm-7.h5")
+
+start = time.time()
+pred = model.predict([cell_test[:,0:1],cell_test[:,1:2]])
+end = time.time()
+print("Prediction time is {} second".format(end-start))
+np.savetxt("indirect_norm-7.dat",pred*factor,header="avs avc aes aec cvs cvc ces cec [pixel]")
+
+#KTF.set_session(old_session)

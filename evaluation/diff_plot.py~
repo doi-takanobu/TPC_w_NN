@@ -1,0 +1,43 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+ans = np.loadtxt("../keras/test/indirect_test_ans.dat")
+pred = np.loadtxt("../keras/test/indirect_test_pred.dat")
+
+diff = ans-pred
+factor = np.array([.4,.174,.4,.174,.4,.174,.4,.174])
+diff = diff*factor
+
+diff_v_x = diff[:,0]
+diff_v_y = diff[:,4]
+diff_v_z = (diff[:,1]+diff[:,5])/2.
+diff_e_x = diff[:,2]
+diff_e_y = diff[:,6]
+diff_e_z = (diff[:,3]+diff[:,7])/2.
+
+fig = plt.figure()
+ax = Axes3D(fig)
+
+ax.set_xlabel("x (mm)")
+ax.set_ylabel("y (mm)")
+ax.set_zlabel("z (mm)")
+
+#ax.set_xlim(-1,1)
+#ax.set_ylim(-1,1)
+#ax.set_zlim(-1,1)
+
+ax.plot(diff_v_x,diff_v_y,diff_v_z,"ro",ms=4,mew=0.5)
+ax.plot(diff_e_x,diff_e_y,diff_e_z,"bo",ms=4,mew=0.5)
+
+v = np.sqrt(diff_v_x*diff_v_x+diff_v_y*diff_v_y+diff_v_z*diff_v_z)
+fig2 = plt.figure()
+ax2 = fig2.add_subplot(1,1,1)
+ax2.hist(v,bins=100,range=(v.min(),v.max()))
+
+e = np.sqrt(diff_e_x*diff_e_x+diff_e_y*diff_e_y+diff_e_z*diff_e_z)
+fig3 = plt.figure()
+ax3 = fig3.add_subplot(1,1,1)
+ax3.hist(e,bins=100,range=(e.min(),e.max()))
+
+plt.show()

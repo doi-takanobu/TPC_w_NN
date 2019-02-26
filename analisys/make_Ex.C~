@@ -1,0 +1,13 @@
+void make_Ex(TTree* tree)
+{
+  //  TFile *file = new TFile(filename);
+  //  char* cmd = "";
+  //  sprintf(cmd,"Ex>>Ex(100,-3,3)",histname);
+  tree->Draw("Ex>>Ex(100,-3,3)");
+  Ex->SetXtitle("Ex (MeV)");
+  Ex->SetTitleSize(0.5,"x");
+  Ex->SetTitleSize(0.5,"y");
+  Ex->SetLabelSize(0.5,"x");
+  Ex->SetLabelSize(0.5,"y");
+  return 0;
+}
